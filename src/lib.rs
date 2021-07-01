@@ -35,12 +35,11 @@ use std::sync::Mutex;
 /// ```
 /// use validated::Validated::{self, Success, Failure};
 ///
-///
 /// let v: Vec<Validated<u32, &str>> = vec![Success(1), Success(2), Success(3)];
 /// let r: Validated<Vec<u32>, &str> = Success(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
-/// let v: Vec<Validated<u32, &str>> = vec![Success(1), Failure(vec!["No!"]), Success(3), Failure(vec!["Ack!"])];
+/// let v: Vec<Validated<u32, &str>> = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
 /// let r: Validated<Vec<u32>, &str> = Failure(vec!["No!", "Ack!"]);
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
@@ -53,6 +52,11 @@ pub enum Validated<T, E> {
 }
 
 impl<T, E> Validated<T, E> {
+    /// Fail with the given error.
+    pub fn fail(e: E) -> Validated<T, E> {
+        Failure(vec![e])
+    }
+
     /// Converts from `&mut Validated<T, E>` to `Validated<&mut T, &mut E>`.
     ///
     /// **Note:** In the case of [`Failure`], a new `Vec` of references is
@@ -123,6 +127,18 @@ impl<T, E> Validated<T, E> {
 
     /// Applies a function to the `T` value of a [`Success`] variant, or leaves
     /// a [`Failure`] variant untouched.
+    ///
+    /// ```
+    /// use validated::Validated::{self, Success, Failure};
+    ///
+    /// let v: Validated<u32, &str> = Success(1);
+    /// let r = v.map(|n| n * 2);
+    /// assert_eq!(r, Success(2));
+    ///
+    /// let v: Validated<u32, &str> = Validated::fail("No!");
+    /// let r = v.map(|n| n * 2);
+    /// assert_eq!(r, Validated::fail("No!"));
+    /// ```
     pub fn map<U, F>(self, op: F) -> Validated<U, E>
     where
         F: FnOnce(T) -> U,
@@ -188,7 +204,7 @@ impl<T, E> Validated<T, E> {
     /// let v: Validated<u32, &str> = Validated::Success(1);
     /// assert_eq!(v.unwrap_or(2), 1);
     ///
-    /// let v: Validated<u32, &str> = Validated::Failure(vec!["Oh no!"]);
+    /// let v: Validated<u32, &str> = Validated::fail("Oh no!");
     /// assert_eq!(v.unwrap_or(2), 2);
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
