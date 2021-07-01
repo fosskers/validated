@@ -3,9 +3,10 @@
 #![warn(missing_docs)]
 
 use crate::Validated::{Failure, Success};
+use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
-/// Similar to `Result`, but cumulative in its error type.
+/// Similar to [`Result`], but cumulative in its error type.
 ///
 /// Consider that when using `collect` in a "Traversable" way to pull a single
 /// `Result` out of an `Iterator` containing many `Result`s, it will fail on the
@@ -15,11 +16,13 @@ use std::ops::{Deref, DerefMut};
 /// ```
 /// use validated::Validated;
 ///
-/// let v: Vec<Result<(), ()>> = vec![Ok(()), Ok(()), Ok(())];
-/// assert_eq!(Validated::Success(()), v.into_iter().collect());
+/// let v: Vec<Result<u32, &str>> = vec![Ok(1), Ok(2), Ok(3)];
+/// let r: Validated<Vec<u32>, &str> = Validated::Success(vec![1, 2, 3]);
+/// assert_eq!(r, v.into_iter().collect());
 ///
-/// let v: Vec<Result<(), usize>> = vec![Ok(()), Err(1), Ok(()), Err(2), Ok(())];
-/// assert_eq!(Validated::Failure(vec![1,2]), v.into_iter().collect());
+/// let v: Vec<Result<u32, &str>> = vec![Ok(1), Err("Oh!"), Ok(2), Err("No!"), Ok(3)];
+/// let r: Validated<Vec<u32>, &str> = Validated::Failure(vec!["Oh!", "No!"]);
+/// assert_eq!(r, v.into_iter().collect());
 /// ```
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Validated<T, E> {
@@ -220,6 +223,41 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
     }
 }
 
+impl<T, U, E> FromIterator<Result<T, E>> for Validated<U, E>
+where
+    U: FromIterator<T>,
+{
+    fn from_iter<I: IntoIterator<Item = Result<T, E>>>(iter: I) -> Self {
+        enum SkipTake<T> {
+            Skip,
+            Take(T),
+        }
+
+        let mut errors = Vec::new();
+
+        let result = iter
+            .into_iter()
+            .scan(&mut errors, |errors, item| match item {
+                Ok(item) => Some(SkipTake::Take(item)),
+                Err(e) => {
+                    errors.push(e);
+                    Some(SkipTake::Skip)
+                }
+            })
+            .filter_map(|item| match item {
+                SkipTake::Skip => None,
+                SkipTake::Take(item) => Some(item),
+            })
+            .collect();
+
+        if errors.is_empty() {
+            Success(result)
+        } else {
+            Failure(errors)
+        }
+    }
+}
+
 impl<T, E> IntoIterator for Validated<T, E> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -262,10 +300,12 @@ pub struct Iter<'a, T: 'a> {
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.take()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() { 1 } else { 0 };
         (n, Some(n))
@@ -287,6 +327,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     fn next(&mut self) -> Option<&'a mut T> {
         self.inner.take()
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() { 1 } else { 0 };
@@ -314,6 +355,7 @@ impl<T> Iterator for IntoIter<T> {
     fn next(&mut self) -> Option<T> {
         self.inner.take()
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() { 1 } else { 0 };
