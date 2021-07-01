@@ -24,6 +24,21 @@ use std::ops::{Deref, DerefMut};
 /// let r: Validated<Vec<u32>, &str> = Validated::Failure(vec!["Oh!", "No!"]);
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
+///
+/// Naturally iterators of `Validated` values can be collected in a similar way:
+///
+/// ```
+/// use validated::Validated::{self, Success, Failure};
+///
+///
+/// let v: Vec<Validated<u32, &str>> = vec![Success(1), Success(2), Success(3)];
+/// let r: Validated<Vec<u32>, &str> = Success(vec![1, 2, 3]);
+/// assert_eq!(r, v.into_iter().collect());
+///
+/// let v: Vec<Validated<u32, &str>> = vec![Success(1), Failure(vec!["No!"]), Success(3), Failure(vec!["Ack!"])];
+/// let r: Validated<Vec<u32>, &str> = Failure(vec!["No!", "Ack!"]);
+/// assert_eq!(r, v.into_iter().collect());
+/// ```
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Validated<T, E> {
     /// Analogous to [`Result::Ok`].
@@ -236,6 +251,32 @@ where
                 Ok(item) => Some(item),
                 Err(e) => {
                     errors.push(e);
+                    None
+                }
+            })
+            .collect();
+
+        if errors.is_empty() {
+            Success(result)
+        } else {
+            Failure(errors)
+        }
+    }
+}
+
+impl<T, U, E> FromIterator<Validated<T, E>> for Validated<U, E>
+where
+    U: FromIterator<T>,
+{
+    fn from_iter<I: IntoIterator<Item = Validated<T, E>>>(iter: I) -> Self {
+        let mut errors = Vec::new();
+
+        let result = iter
+            .into_iter()
+            .filter_map(|item| match item {
+                Success(item) => Some(item),
+                Failure(e) => {
+                    errors.extend(e);
                     None
                 }
             })
