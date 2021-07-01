@@ -5,6 +5,10 @@
 use crate::Validated::{Failure, Success};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
+use std::sync::Mutex;
+
+#[cfg(feature = "rayon")]
+use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 /// Similar to [`Result`], but cumulative in its error type.
 ///
@@ -248,7 +252,7 @@ where
         let result = iter
             .into_iter()
             .filter_map(|item| match item {
-                Ok(item) => Some(item),
+                Ok(t) => Some(t),
                 Err(e) => {
                     errors.push(e);
                     None
@@ -274,7 +278,7 @@ where
         let result = iter
             .into_iter()
             .filter_map(|item| match item {
-                Success(item) => Some(item),
+                Success(t) => Some(t),
                 Failure(e) => {
                     errors.extend(e);
                     None
@@ -286,6 +290,37 @@ where
             Success(result)
         } else {
             Failure(errors)
+        }
+    }
+}
+
+#[cfg(feature = "rayon")]
+impl<T, U, E> FromParallelIterator<Result<T, E>> for Validated<U, E>
+where
+    T: Send,
+    E: Send,
+    U: FromParallelIterator<T>,
+{
+    fn from_par_iter<I: IntoParallelIterator<Item = Result<T, E>>>(par_iter: I) -> Self {
+        let errors = Mutex::new(Vec::new());
+
+        let result = par_iter
+            .into_par_iter()
+            .filter_map(|item| match item {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    errors.lock().unwrap().push(e);
+                    None
+                }
+            })
+            .collect();
+
+        let e = errors.into_inner().unwrap();
+
+        if e.is_empty() {
+            Success(result)
+        } else {
+            Failure(e)
         }
     }
 }
