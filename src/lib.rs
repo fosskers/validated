@@ -228,25 +228,16 @@ where
     U: FromIterator<T>,
 {
     fn from_iter<I: IntoIterator<Item = Result<T, E>>>(iter: I) -> Self {
-        enum SkipTake<T> {
-            Skip,
-            Take(T),
-        }
-
         let mut errors = Vec::new();
 
         let result = iter
             .into_iter()
-            .scan(&mut errors, |errors, item| match item {
-                Ok(item) => Some(SkipTake::Take(item)),
+            .filter_map(|item| match item {
+                Ok(item) => Some(item),
                 Err(e) => {
                     errors.push(e);
-                    Some(SkipTake::Skip)
+                    None
                 }
-            })
-            .filter_map(|item| match item {
-                SkipTake::Skip => None,
-                SkipTake::Take(item) => Some(item),
             })
             .collect();
 
