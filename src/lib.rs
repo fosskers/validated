@@ -436,6 +436,15 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.take()
+    }
+}
+
+impl<T> ExactSizeIterator for Iter<'_, T> {}
+
 /// An iterator over a mutable reference to the [`Success`] variant of a [`Validated`].
 ///
 /// Created by [`Validated::iter_mut`].
@@ -458,6 +467,15 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         (n, Some(n))
     }
 }
+
+impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.take()
+    }
+}
+
+impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
 /// An iterator over the value in a [`Success`] variant of a [`Validated`].
 ///
