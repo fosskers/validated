@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 
 use crate::Validated::{Failure, Success};
+use nonempty::NonEmpty;
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
@@ -48,13 +49,13 @@ pub enum Validated<T, E> {
     /// Analogous to [`Result::Ok`].
     Success(T),
     /// Analogous to [`Result::Err`], except that the error type is cumulative.
-    Failure(Vec<E>),
+    Failure(NonEmpty<E>),
 }
 
 impl<T, E> Validated<T, E> {
     /// Fail with the given error.
     pub fn fail(e: E) -> Validated<T, E> {
-        Failure(vec![e])
+        Failure(NonEmpty::new(e))
     }
 
     /// Converts from `&mut Validated<T, E>` to `Validated<&mut T, &mut E>`.
@@ -64,7 +65,12 @@ impl<T, E> Validated<T, E> {
     pub fn as_mut(&mut self) -> Validated<&mut T, &mut E> {
         match self {
             Success(ref mut t) => Success(t),
-            Failure(ref mut e) => Failure(e.iter_mut().collect()),
+            Failure(ref mut e) => {
+                let head = &mut e.head;
+                let tail = e.tail.iter_mut().collect();
+                let ne = NonEmpty { head, tail };
+                Failure(ne)
+            }
         }
     }
 
@@ -78,7 +84,12 @@ impl<T, E> Validated<T, E> {
     pub fn as_ref(&self) -> Validated<&T, &E> {
         match self {
             Success(ref t) => Success(t),
-            Failure(e) => Failure(e.iter().collect()),
+            Failure(e) => {
+                let head = &e.head;
+                let tail = e.tail.iter().collect();
+                let ne = NonEmpty { head, tail };
+                Failure(ne)
+            }
         }
     }
 
@@ -153,7 +164,7 @@ impl<T, E> Validated<T, E> {
     /// [`Success`] variant untouched.
     pub fn map_err<R, F>(self, op: F) -> Validated<T, R>
     where
-        F: FnOnce(Vec<E>) -> Vec<R>,
+        F: FnOnce(NonEmpty<E>) -> NonEmpty<R>,
     {
         match self {
             Success(t) => Success(t),
@@ -162,7 +173,7 @@ impl<T, E> Validated<T, E> {
     }
 
     /// Converts `self` into a [`Result`].
-    pub fn ok(self) -> Result<T, Vec<E>> {
+    pub fn ok(self) -> Result<T, NonEmpty<E>> {
         match self {
             Success(t) => Ok(t),
             Failure(e) => Err(e),
@@ -217,7 +228,7 @@ impl<T, E> Validated<T, E> {
     /// Returns the contained [`Success`] value or computes it from a closure.
     pub fn unwrap_or_else<F>(self, op: F) -> T
     where
-        F: FnOnce(Vec<E>) -> T,
+        F: FnOnce(NonEmpty<E>) -> T,
     {
         match self {
             Success(t) => t,
@@ -254,7 +265,7 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
     fn from(r: Result<T, E>) -> Self {
         match r {
             Ok(t) => Success(t),
-            Err(e) => Failure(vec![e]),
+            Err(e) => Failure(NonEmpty::new(e)),
         }
     }
 }
@@ -277,10 +288,9 @@ where
             })
             .collect();
 
-        if errors.is_empty() {
-            Success(result)
-        } else {
-            Failure(errors)
+        match NonEmpty::from_vec(errors) {
+            None => Success(result),
+            Some(e) => Failure(e),
         }
     }
 }
@@ -303,10 +313,9 @@ where
             })
             .collect();
 
-        if errors.is_empty() {
-            Success(result)
-        } else {
-            Failure(errors)
+        match NonEmpty::from_vec(errors) {
+            None => Success(result),
+            Some(e) => Failure(e),
         }
     }
 }
@@ -335,12 +344,9 @@ where
             })
             .collect();
 
-        let e = errors.into_inner().unwrap();
-
-        if e.is_empty() {
-            Success(result)
-        } else {
-            Failure(e)
+        match NonEmpty::from_vec(errors.into_inner().unwrap()) {
+            None => Success(result),
+            Some(e) => Failure(e),
         }
     }
 }
@@ -369,12 +375,9 @@ where
             })
             .collect();
 
-        let e = errors.into_inner().unwrap();
-
-        if e.is_empty() {
-            Success(result)
-        } else {
-            Failure(e)
+        match NonEmpty::from_vec(errors.into_inner().unwrap()) {
+            None => Success(result),
+            Some(e) => Failure(e),
         }
     }
 }
