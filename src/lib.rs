@@ -8,6 +8,7 @@ use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "rayon")]
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+#[cfg(feature = "rayon")]
 use std::sync::Mutex;
 
 /// Similar to [`Result`], but cumulative in its error type.
@@ -59,7 +60,7 @@ impl<T, E> Validated<T, E> {
     pub fn as_mut(&mut self) -> Validated<&mut T, &mut E> {
         match self {
             Success(ref mut t) => Success(t),
-            Failure(ref mut e) => Failure(e.iter_mut().map(|x| x).collect()),
+            Failure(ref mut e) => Failure(e.iter_mut().collect()),
         }
     }
 
@@ -73,7 +74,7 @@ impl<T, E> Validated<T, E> {
     pub fn as_ref(&self) -> Validated<&T, &E> {
         match self {
             Success(ref t) => Success(t),
-            Failure(e) => Failure(e.iter().map(|x| x).collect()),
+            Failure(e) => Failure(e.iter().collect()),
         }
     }
 
