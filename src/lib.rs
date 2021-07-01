@@ -1,6 +1,9 @@
 //! The cumulative sibling of `Result` and `Either`.
 
+#![warn(missing_docs)]
+
 use crate::Validated::{Failure, Success};
+use std::ops::{Deref, DerefMut};
 
 /// Similar to `Result`, but cumulative in its error type.
 ///
@@ -27,6 +30,44 @@ pub enum Validated<T, E> {
 }
 
 impl<T, E> Validated<T, E> {
+    /// Converts from `&mut Validated<T, E>` to `Validated<&mut T, &mut E>`.
+    ///
+    /// **Note:** In the case of [`Failure`], a new `Vec` of references is
+    /// allocated.
+    pub fn as_mut(&mut self) -> Validated<&mut T, &mut E> {
+        match self {
+            Success(ref mut t) => Success(t),
+            Failure(ref mut e) => Failure(e.iter_mut().map(|x| x).collect()),
+        }
+    }
+
+    /// Converts from `&Validated<T, E>` to `Validated<&T, &E>`.
+    ///
+    /// Produces a new `Validated`, containing references to the original,
+    /// leaving the original in place.
+    ///
+    /// **Note:** In the case of [`Failure`], a new `Vec` of references is
+    /// allocated.
+    pub fn as_ref(&self) -> Validated<&T, &E> {
+        match self {
+            Success(ref t) => Success(t),
+            Failure(e) => Failure(e.iter().map(|x| x).collect()),
+        }
+    }
+
+    /// Returns the contained [`Success`] value, consuming `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics with a custom message if `self` is actually the `Failure`
+    /// variant.
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Success(t) => t,
+            Failure(_) => panic!("{}", msg),
+        }
+    }
+
     /// Was a given `Validated` operation completely successful?
     pub fn is_success(&self) -> bool {
         matches!(self, Success(_))
@@ -123,6 +164,30 @@ impl<T, E> Validated<T, E> {
             Success(t) => t,
             Failure(e) => op(e),
         }
+    }
+}
+
+impl<T: Default, E> Validated<T, E> {
+    /// Returns the contained [`Success`] value or the default for `T`.
+    pub fn unwrap_or_default(self) -> T {
+        match self {
+            Success(t) => t,
+            Failure(_) => Default::default(),
+        }
+    }
+}
+
+impl<T: Deref, E> Validated<T, E> {
+    /// Like [`Result::as_deref`].
+    pub fn as_deref(&self) -> Validated<&T::Target, &E> {
+        self.as_ref().map(|t| t.deref())
+    }
+}
+
+impl<T: DerefMut, E> Validated<T, E> {
+    /// Like [`Result::as_deref_mut`].
+    pub fn as_deref_mut(&mut self) -> Validated<&mut T::Target, &mut E> {
+        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
