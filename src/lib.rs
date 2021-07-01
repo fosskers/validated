@@ -78,6 +78,26 @@ impl<T, E> Validated<T, E> {
         matches!(self, Failure(_))
     }
 
+    /// Returns an iterator over the possibly contained value.
+    ///
+    /// The iterator yields one value if the result is [`Success`], otherwise
+    /// nothing.
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.as_ref().ok().ok(),
+        }
+    }
+
+    /// Returns a mutable iterator over the possibly contained value.
+    ///
+    /// The iterator yields one value if the result is [`Success`], otherwise
+    /// nothing.
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        IterMut {
+            inner: self.as_mut().ok().ok(),
+        }
+    }
+
     /// Applies a function to the `T` value of a [`Success`] variant, or leaves
     /// a [`Failure`] variant untouched.
     pub fn map<U, F>(self, op: F) -> Validated<U, E>
@@ -197,5 +217,106 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
             Ok(t) => Success(t),
             Err(e) => Failure(vec![e]),
         }
+    }
+}
+
+impl<T, E> IntoIterator for Validated<T, E> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            inner: self.ok().ok(),
+        }
+    }
+}
+
+impl<'a, T, E> IntoIterator for &'a Validated<T, E> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T, E> IntoIterator for &'a mut Validated<T, E> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+
+    fn into_iter(self) -> IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
+/// An iterator over a reference to the [`Success`] variant of a [`Validated`].
+///
+/// The iterator yields one value if the result is [`Success`], otherwise nothing.
+///
+/// Created by [`Validated::iter`].
+#[derive(Debug)]
+pub struct Iter<'a, T: 'a> {
+    inner: Option<&'a T>,
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.take()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = if self.inner.is_some() { 1 } else { 0 };
+        (n, Some(n))
+    }
+}
+
+/// An iterator over a mutable reference to the [`Success`] variant of a [`Validated`].
+///
+/// Created by [`Validated::iter_mut`].
+#[derive(Debug)]
+pub struct IterMut<'a, T: 'a> {
+    inner: Option<&'a mut T>,
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut T> {
+        self.inner.take()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = if self.inner.is_some() { 1 } else { 0 };
+        (n, Some(n))
+    }
+}
+
+/// An iterator over the value in a [`Success`] variant of a [`Validated`].
+///
+/// The iterator yields one value if the result is [`Success`], otherwise nothing.
+///
+/// This struct is created by the [`into_iter`] method on
+/// [`Validated`] (provided by the [`IntoIterator`] trait).
+///
+/// [`into_iter`]: IntoIterator::into_iter
+#[derive(Clone, Debug)]
+pub struct IntoIter<T> {
+    inner: Option<T>,
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.take()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = if self.inner.is_some() { 1 } else { 0 };
+        (n, Some(n))
     }
 }
