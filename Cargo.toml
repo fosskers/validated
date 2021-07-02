@@ -2,6 +2,13 @@
 name = "validated"
 version = "0.1.0"
 edition = "2018"
+description = "The cumulative sibling of `Result` and `Either`."
+homepage = "https://github.com/fosskers/validation"
+repository = "https://github.com/fosskers/validation"
+readme = "README.md"
+license = "MIT"
+keywords = ["validation", "errors"]
+categories = ["data-structures", "rust-patterns"]
 
 [dependencies]
 nonempty = "0.7"
