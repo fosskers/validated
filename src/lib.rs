@@ -251,6 +251,24 @@ impl<T, E> Validated<T, E> {
         }
     }
 
+    /// Maps a function over two `Validated`, but only if both are of the
+    /// `Success` variant. If both failed, then their errors are concatenated.
+    pub fn map2<U, Z, F>(self, vu: Validated<U, E>, f: F) -> Validated<Z, E>
+    where
+        F: FnOnce(T, U) -> Z,
+    {
+        match (self, vu) {
+            (Success(t), Success(u)) => Success(f(t, u)),
+            (Success(_), Failure(e)) => Failure(e),
+            (Failure(e), Success(_)) => Failure(e),
+            (Failure(mut e0), Failure(mut e1)) => {
+                e0.push(e1.head);
+                e0.append(&mut e1.tail);
+                Failure(e0)
+            }
+        }
+    }
+
     /// Converts `self` into a [`Result`].
     pub fn ok(self) -> Result<T, NonEmpty<E>> {
         match self {
