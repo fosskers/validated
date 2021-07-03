@@ -72,8 +72,8 @@ assert_eq!(r, v.into_iter().collect());
 
 ### Use of `NonEmpty`
 
-In the spirit of "make illegal states unrepresentable", the [`Fail`] variant
-of `Validated` contains a [`NonEmpty`], a non-empty `Vec`. `NonEmpty` can do
+In the spirit of "make illegal states unrepresentable", the `Fail` variant
+of `Validated` contains a `NonEmpty`, a non-empty `Vec`. `NonEmpty` can do
 everything that `Vec` can do, plus some additional benefits. In the case of
 this crate, this representation forbids the otherwise meaningless `Fail(vec![])`.
 
