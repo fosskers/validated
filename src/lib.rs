@@ -68,6 +68,16 @@
 //! assert_eq!(r, v.into_iter().collect());
 //! ```
 //!
+//! ## Use of `NonEmpty`
+//!
+//! In the spirit of "make illegal states unrepresentable", the [`Fail`] variant
+//! of `Validated` contains a [`NonEmpty`], a non-empty `Vec`. `NonEmpty` can do
+//! everything that `Vec` can do, plus some additional benefits. In the case of
+//! this crate, this representation forbids the otherwise meaningless `Fail(vec![])`.
+//!
+//! In other words, if you have a `Validated<T, E>`, you either have a concrete
+//! `T`, or **at least one** `E`.
+//!
 //! # Features
 //!
 //! - `rayon`: Enable `FromParallelIterator` instances for `Validated`.
