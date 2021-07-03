@@ -269,6 +269,24 @@ impl<T, E> Validated<T, E> {
         }
     }
 
+    pub fn map3<U, V, Z, F>(self, vu: Validated<U, E>, vv: Validated<V, E>, f: F) -> Validated<Z, E>
+    where
+        F: FnOnce(T, U, V) -> Z,
+    {
+        match (self, vu, vv) {
+            (Success(t), Success(u), Success(v)) => Success(f(t, u, v)),
+            (Success(_), Success(_), Failure(e)) => Failure(e),
+            (Success(_), Failure(e), Success(_)) => Failure(e),
+            (Failure(e), Success(_), Success(_)) => Failure(e),
+            (Success(_), Failure(e0), Failure(e1)) => Failure(nonempties(e0, Some(e1).into_iter())),
+            (Failure(e0), Success(_), Failure(e1)) => Failure(nonempties(e0, Some(e1).into_iter())),
+            (Failure(e0), Failure(e1), Success(_)) => Failure(nonempties(e0, Some(e1).into_iter())),
+            (Failure(e0), Failure(e1), Failure(e2)) => {
+                Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+        }
+    }
+
     /// Converts `self` into a [`Result`].
     pub fn ok(self) -> Result<T, NonEmpty<E>> {
         match self {
@@ -364,6 +382,13 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
             Ok(t) => Success(t),
             Err(e) => Failure(NonEmpty::new(e)),
         }
+    }
+}
+
+// FIXME Can't do it...
+impl<T, E> FromIterator<NonEmpty<E>> for Validated<T, E> {
+    fn from_iter<I: IntoIterator<Item = NonEmpty<E>>>(iter: I) -> Self {
+        todo!()
     }
 }
 
@@ -600,4 +625,17 @@ impl<T> Iterator for IntoIter<T> {
         let n = if self.inner.is_some() { 1 } else { 0 };
         (n, Some(n))
     }
+}
+
+/// Fuse some `NonEmpty`s together.
+fn nonempties<E, I>(mut a: NonEmpty<E>, rest: I) -> NonEmpty<E>
+where
+    I: Iterator<Item = NonEmpty<E>>,
+{
+    for mut i in rest {
+        a.push(i.head);
+        a.append(&mut i.tail)
+    }
+
+    a
 }
