@@ -2,12 +2,12 @@
 
 The cumulative sibling of `Result` and `Either`.
 
-The [`Validated`] type has special `FromIterator` instances that enable
+The `Validated` type has special `FromIterator` instances that enable
 _all_ errors in a sequence to be reported, not just the first one.
 
 ## Motivation
 
-We might think of [`Iterator::collect`] as being for consolidating the
+We might think of `Iterator::collect` as being for consolidating the
 result of some chained iteration into a concrete container, like `Vec`.
 
 ```rust
@@ -16,7 +16,7 @@ assert_eq!(vec![2,4,6], v.into_iter().map(|n| n * 2).collect::<Vec<u32>>());
 ```
 
 But `collect` isn't limited to this; it can be used to "fold" down into any
-type you like, provided that it implements [`FromIterator`]. Consider the
+type you like, provided that it implements `FromIterator`. Consider the
 effects of such an `impl` for `Result`:
 
 ```rust
@@ -59,7 +59,7 @@ detection of a single failure isn't appropriate. You might instead want
 everything to finish as it can, and then collect a bundle of errors at the
 end.
 
-The [`Validated`] type accomodates these use cases; it is a "cumulative `Result`".
+The `Validated` type accomodates these use cases; it is a "cumulative `Result`".
 
 ```rust
 use validated::Validated::{self, Good, Fail};
