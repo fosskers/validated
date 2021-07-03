@@ -1,11 +1,11 @@
 [package]
 name = "validated"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Colin Woodbury <colin@fosskers.ca>", "John Archer <archer884@gmail.com>"]
 edition = "2018"
 description = "The cumulative sibling of `Result` and `Either`."
-homepage = "https://github.com/fosskers/validation"
-repository = "https://github.com/fosskers/validation"
+homepage = "https://github.com/fosskers/validated"
+repository = "https://github.com/fosskers/validated"
 readme = "README.md"
 license = "MIT"
 keywords = ["validation", "errors"]

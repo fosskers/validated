@@ -91,7 +91,7 @@
 //! [cats]: https://typelevel.org/cats/datatypes/validated.html
 
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/validated/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/validated/0.1.1")]
 
 use crate::Validated::{Fail, Good};
 use nonempty::NonEmpty;
