@@ -260,10 +260,10 @@ impl<T, E> Validated<T, E> {
     /// ```
     /// use validated::Validated::{self, Success, Failure};
     ///
-    /// let v: Validated<bool, &str> = Success(1).map2(Success(1), |a, b| a == b);
-    /// assert_eq!(v, Success(true));
+    /// let v: Validated<u32, &str> = Success(1).map2(Success(2), |a, b| a + b);
+    /// assert_eq!(v, Success(3));
     ///
-    /// let v: Validated<bool, &str> = Success(1).map2(Validated::fail("No!"), |a, b| a == b);
+    /// let v: Validated<u32, &str> = Success(1).map2(Validated::fail("No!"), |a, b: u32| a + b);
     /// assert_eq!(v, Validated::fail("No!"));
     /// ```
     pub fn map2<U, Z, F>(self, vu: Validated<U, E>, f: F) -> Validated<Z, E>
@@ -284,6 +284,16 @@ impl<T, E> Validated<T, E> {
 
     /// Maps a function over three `Validated`, but only if all three are of the
     /// `Success` variant. If any failed, then their errors are concatenated.
+    ///
+    /// ```
+    /// use validated::Validated::{self, Success, Failure};
+    ///
+    /// let v: Validated<u32, &str> = Success(1).map3(Success(2), Success(3), |a, b, c| a + b + c);
+    /// assert_eq!(v, Success(6));
+    ///
+    /// let v: Validated<u32, &str> = Success(1).map3(Success(2), Validated::fail("No!"), |a, b, c: u32| a + b + c);
+    /// assert_eq!(v, Validated::fail("No!"));
+    /// ```
     pub fn map3<U, V, Z, F>(self, vu: Validated<U, E>, vv: Validated<V, E>, f: F) -> Validated<Z, E>
     where
         F: FnOnce(T, U, V) -> Z,
@@ -298,6 +308,60 @@ impl<T, E> Validated<T, E> {
             (Failure(e0), Failure(e1), Success(_)) => Failure(nonempties(e0, Some(e1).into_iter())),
             (Failure(e0), Failure(e1), Failure(e2)) => {
                 Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+        }
+    }
+
+    /// Maps a function over four `Validated`, but only if all four are of the
+    /// `Success` variant. If any failed, then their errors are concatenated.
+    pub fn map4<U, V, W, Z, F>(
+        self,
+        vu: Validated<U, E>,
+        vv: Validated<V, E>,
+        vw: Validated<W, E>,
+        f: F,
+    ) -> Validated<Z, E>
+    where
+        F: FnOnce(T, U, V, W) -> Z,
+    {
+        match (self, vu, vv, vw) {
+            (Success(t), Success(u), Success(v), Success(w)) => Success(f(t, u, v, w)),
+            (Success(_), Success(_), Success(_), Failure(e)) => Failure(e),
+            (Success(_), Success(_), Failure(e), Success(_)) => Failure(e),
+            (Success(_), Failure(e), Success(_), Success(_)) => Failure(e),
+            (Failure(e), Success(_), Success(_), Success(_)) => Failure(e),
+            (Success(_), Success(_), Failure(e0), Failure(e1)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Success(_), Failure(e0), Success(_), Failure(e1)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Success(_), Failure(e0), Failure(e1), Success(_)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Failure(e0), Success(_), Success(_), Failure(e1)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Failure(e0), Failure(e1), Success(_), Success(_)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Failure(e0), Success(_), Failure(e1), Success(_)) => {
+                Failure(nonempties(e0, Some(e1).into_iter()))
+            }
+            (Success(_), Failure(e0), Failure(e1), Failure(e2)) => {
+                Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+            (Failure(e0), Success(_), Failure(e1), Failure(e2)) => {
+                Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+            (Failure(e0), Failure(e1), Success(_), Failure(e2)) => {
+                Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+            (Failure(e0), Failure(e1), Failure(e2), Success(_)) => {
+                Failure(nonempties(e0, vec![e1, e2].into_iter()))
+            }
+            (Failure(e0), Failure(e1), Failure(e2), Failure(e3)) => {
+                Failure(nonempties(e0, vec![e1, e2, e3].into_iter()))
             }
         }
     }
