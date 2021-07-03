@@ -60,11 +60,11 @@
 //! The [`Validated`] type accomodates these use cases; it is a "cumulative `Result`".
 //!
 //! ```
-//! use validated::Validated::{self, Success, Failure};
+//! use validated::Validated::{self, Good, Fail};
 //! use nonempty::NonEmpty;
 //!
-//! let v = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
-//! let r: Validated<Vec<u32>, &str> = Failure(NonEmpty::from(("No!", vec!["Ack!"])));
+//! let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
+//! let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
 //! assert_eq!(r, v.into_iter().collect());
 //! ```
 //!
@@ -82,7 +82,7 @@
 
 #![warn(missing_docs)]
 
-use crate::Validated::{Failure, Success};
+use crate::Validated::{Fail, Good};
 use nonempty::NonEmpty;
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
@@ -100,58 +100,58 @@ use std::sync::Mutex;
 /// to be made aware of every failure that (would have) occurred.
 ///
 /// ```
-/// use validated::Validated;
+/// use validated::Validated::{self, Good, Fail};
 /// use nonempty::NonEmpty;
 ///
 /// let v = vec![Ok(1), Ok(2), Ok(3)];
-/// let r: Validated<Vec<u32>, &str> = Validated::Success(vec![1, 2, 3]);
+/// let r: Validated<Vec<u32>, &str> = Good(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
 /// let v = vec![Ok(1), Err("Oh!"), Ok(2), Err("No!"), Ok(3)];
-/// let r: Validated<Vec<u32>, &str> = Validated::Failure(NonEmpty::from(("Oh!", vec!["No!"])));
+/// let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("Oh!", vec!["No!"])));
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 ///
 /// Naturally iterators of `Validated` values can be collected in a similar way:
 ///
 /// ```
-/// use validated::Validated::{self, Success, Failure};
+/// use validated::Validated::{self, Good, Fail};
 /// use nonempty::NonEmpty;
 ///
-/// let v = vec![Success(1), Success(2), Success(3)];
-/// let r: Validated<Vec<u32>, &str> = Success(vec![1, 2, 3]);
+/// let v = vec![Good(1), Good(2), Good(3)];
+/// let r: Validated<Vec<u32>, &str> = Good(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
-/// let v = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
-/// let r: Validated<Vec<u32>, &str> = Failure(NonEmpty::from(("No!", vec!["Ack!"])));
+/// let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
+/// let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Validated<T, E> {
     /// Analogous to [`Result::Ok`].
-    Success(T),
+    Good(T),
     /// Analogous to [`Result::Err`], except that the error type is cumulative.
-    Failure(NonEmpty<E>),
+    Fail(NonEmpty<E>),
 }
 
 impl<T, E> Validated<T, E> {
     /// Fail with the given error.
     pub fn fail(e: E) -> Validated<T, E> {
-        Failure(NonEmpty::new(e))
+        Fail(NonEmpty::new(e))
     }
 
     /// Converts from `&mut Validated<T, E>` to `Validated<&mut T, &mut E>`.
     ///
-    /// **Note:** In the case of [`Failure`], a new `Vec` of references is
+    /// **Note:** In the case of [`Fail`], a new `Vec` of references is
     /// allocated.
     pub fn as_mut(&mut self) -> Validated<&mut T, &mut E> {
         match self {
-            Success(ref mut t) => Success(t),
-            Failure(ref mut e) => {
+            Good(ref mut t) => Good(t),
+            Fail(ref mut e) => {
                 let head = &mut e.head;
                 let tail = e.tail.iter_mut().collect();
                 let ne = NonEmpty { head, tail };
-                Failure(ne)
+                Fail(ne)
             }
         }
     }
@@ -161,46 +161,46 @@ impl<T, E> Validated<T, E> {
     /// Produces a new `Validated`, containing references to the original,
     /// leaving the original in place.
     ///
-    /// **Note:** In the case of [`Failure`], a new `Vec` of references is
+    /// **Note:** In the case of [`Fail`], a new `Vec` of references is
     /// allocated.
     pub fn as_ref(&self) -> Validated<&T, &E> {
         match self {
-            Success(ref t) => Success(t),
-            Failure(e) => {
+            Good(ref t) => Good(t),
+            Fail(e) => {
                 let head = &e.head;
                 let tail = e.tail.iter().collect();
                 let ne = NonEmpty { head, tail };
-                Failure(ne)
+                Fail(ne)
             }
         }
     }
 
-    /// Returns the contained [`Success`] value, consuming `self`.
+    /// Returns the contained [`Good`] value, consuming `self`.
     ///
     /// # Panics
     ///
-    /// Panics with a custom message if `self` is actually the `Failure`
+    /// Panics with a custom message if `self` is actually the `Fail`
     /// variant.
     pub fn expect(self, msg: &str) -> T {
         match self {
-            Success(t) => t,
-            Failure(_) => panic!("{}", msg),
+            Good(t) => t,
+            Fail(_) => panic!("{}", msg),
         }
     }
 
     /// Was a given `Validated` operation completely successful?
-    pub fn is_success(&self) -> bool {
-        matches!(self, Success(_))
+    pub fn is_good(&self) -> bool {
+        matches!(self, Good(_))
     }
 
     /// Did a given `Validated` operation have at least one failure?
-    pub fn is_failure(&self) -> bool {
-        matches!(self, Failure(_))
+    pub fn is_fail(&self) -> bool {
+        matches!(self, Fail(_))
     }
 
     /// Returns an iterator over the possibly contained value.
     ///
-    /// The iterator yields one value if the result is [`Success`], otherwise
+    /// The iterator yields one value if the result is [`Good`], otherwise
     /// nothing.
     pub fn iter(&self) -> Iter<'_, T> {
         Iter {
@@ -210,7 +210,7 @@ impl<T, E> Validated<T, E> {
 
     /// Returns a mutable iterator over the possibly contained value.
     ///
-    /// The iterator yields one value if the result is [`Success`], otherwise
+    /// The iterator yields one value if the result is [`Good`], otherwise
     /// nothing.
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
@@ -218,15 +218,15 @@ impl<T, E> Validated<T, E> {
         }
     }
 
-    /// Applies a function to the `T` value of a [`Success`] variant, or leaves
-    /// a [`Failure`] variant untouched.
+    /// Applies a function to the `T` value of a [`Good`] variant, or leaves
+    /// a [`Fail`] variant untouched.
     ///
     /// ```
-    /// use validated::Validated::{self, Success, Failure};
+    /// use validated::Validated::{self, Good, Fail};
     ///
-    /// let v: Validated<u32, &str> = Success(1);
+    /// let v: Validated<u32, &str> = Good(1);
     /// let r = v.map(|n| n * 2);
-    /// assert_eq!(r, Success(2));
+    /// assert_eq!(r, Good(2));
     ///
     /// let v: Validated<u32, &str> = Validated::fail("No!");
     /// let r = v.map(|n| n * 2);
@@ -237,33 +237,33 @@ impl<T, E> Validated<T, E> {
         F: FnOnce(T) -> U,
     {
         match self {
-            Success(t) => Success(op(t)),
-            Failure(e) => Failure(e),
+            Good(t) => Good(op(t)),
+            Fail(e) => Fail(e),
         }
     }
 
-    /// Applies a function to the `Vec<E>` of a [`Failure`] variant, or leaves a
-    /// [`Success`] variant untouched.
+    /// Applies a function to the `Vec<E>` of a [`Fail`] variant, or leaves a
+    /// [`Good`] variant untouched.
     pub fn map_err<R, F>(self, op: F) -> Validated<T, R>
     where
         F: FnOnce(NonEmpty<E>) -> NonEmpty<R>,
     {
         match self {
-            Success(t) => Success(t),
-            Failure(e) => Failure(op(e)),
+            Good(t) => Good(t),
+            Fail(e) => Fail(op(e)),
         }
     }
 
     /// Maps a function over two `Validated`, but only if both are of the
-    /// `Success` variant. If both failed, then their errors are concatenated.
+    /// `Good` variant. If both failed, then their errors are concatenated.
     ///
     /// ```
-    /// use validated::Validated::{self, Success, Failure};
+    /// use validated::Validated::{self, Good, Fail};
     ///
-    /// let v: Validated<u32, &str> = Success(1).map2(Success(2), |a, b| a + b);
-    /// assert_eq!(v, Success(3));
+    /// let v: Validated<u32, &str> = Good(1).map2(Good(2), |a, b| a + b);
+    /// assert_eq!(v, Good(3));
     ///
-    /// let v: Validated<u32, &str> = Success(1).map2(Validated::fail("No!"), |a, b: u32| a + b);
+    /// let v: Validated<u32, &str> = Good(1).map2(Validated::fail("No!"), |a, b: u32| a + b);
     /// assert_eq!(v, Validated::fail("No!"));
     /// ```
     pub fn map2<U, Z, F>(self, vu: Validated<U, E>, f: F) -> Validated<Z, E>
@@ -271,27 +271,27 @@ impl<T, E> Validated<T, E> {
         F: FnOnce(T, U) -> Z,
     {
         match (self, vu) {
-            (Success(t), Success(u)) => Success(f(t, u)),
-            (Success(_), Failure(e)) => Failure(e),
-            (Failure(e), Success(_)) => Failure(e),
-            (Failure(mut e0), Failure(mut e1)) => {
+            (Good(t), Good(u)) => Good(f(t, u)),
+            (Good(_), Fail(e)) => Fail(e),
+            (Fail(e), Good(_)) => Fail(e),
+            (Fail(mut e0), Fail(mut e1)) => {
                 e0.push(e1.head);
                 e0.append(&mut e1.tail);
-                Failure(e0)
+                Fail(e0)
             }
         }
     }
 
     /// Maps a function over three `Validated`, but only if all three are of the
-    /// `Success` variant. If any failed, then their errors are concatenated.
+    /// `Good` variant. If any failed, then their errors are concatenated.
     ///
     /// ```
-    /// use validated::Validated::{self, Success, Failure};
+    /// use validated::Validated::{self, Good, Fail};
     ///
-    /// let v: Validated<u32, &str> = Success(1).map3(Success(2), Success(3), |a, b, c| a + b + c);
-    /// assert_eq!(v, Success(6));
+    /// let v: Validated<u32, &str> = Good(1).map3(Good(2), Good(3), |a, b, c| a + b + c);
+    /// assert_eq!(v, Good(6));
     ///
-    /// let v: Validated<u32, &str> = Success(1).map3(Success(2), Validated::fail("No!"), |a, b, c: u32| a + b + c);
+    /// let v: Validated<u32, &str> = Good(1).map3(Good(2), Validated::fail("No!"), |a, b, c: u32| a + b + c);
     /// assert_eq!(v, Validated::fail("No!"));
     /// ```
     pub fn map3<U, V, Z, F>(self, vu: Validated<U, E>, vv: Validated<V, E>, f: F) -> Validated<Z, E>
@@ -299,21 +299,19 @@ impl<T, E> Validated<T, E> {
         F: FnOnce(T, U, V) -> Z,
     {
         match (self, vu, vv) {
-            (Success(t), Success(u), Success(v)) => Success(f(t, u, v)),
-            (Success(_), Success(_), Failure(e)) => Failure(e),
-            (Success(_), Failure(e), Success(_)) => Failure(e),
-            (Failure(e), Success(_), Success(_)) => Failure(e),
-            (Success(_), Failure(e0), Failure(e1)) => Failure(nonempties(e0, Some(e1).into_iter())),
-            (Failure(e0), Success(_), Failure(e1)) => Failure(nonempties(e0, Some(e1).into_iter())),
-            (Failure(e0), Failure(e1), Success(_)) => Failure(nonempties(e0, Some(e1).into_iter())),
-            (Failure(e0), Failure(e1), Failure(e2)) => {
-                Failure(nonempties(e0, vec![e1, e2].into_iter()))
-            }
+            (Good(t), Good(u), Good(v)) => Good(f(t, u, v)),
+            (Good(_), Good(_), Fail(e)) => Fail(e),
+            (Good(_), Fail(e), Good(_)) => Fail(e),
+            (Fail(e), Good(_), Good(_)) => Fail(e),
+            (Good(_), Fail(e0), Fail(e1)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Good(_), Fail(e1)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Fail(e1), Good(_)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Fail(e1), Fail(e2)) => Fail(nons(e0, vec![e1, e2].into_iter())),
         }
     }
 
     /// Maps a function over four `Validated`, but only if all four are of the
-    /// `Success` variant. If any failed, then their errors are concatenated.
+    /// `Good` variant. If any failed, then their errors are concatenated.
     pub fn map4<U, V, W, Z, F>(
         self,
         vu: Validated<U, E>,
@@ -325,43 +323,23 @@ impl<T, E> Validated<T, E> {
         F: FnOnce(T, U, V, W) -> Z,
     {
         match (self, vu, vv, vw) {
-            (Success(t), Success(u), Success(v), Success(w)) => Success(f(t, u, v, w)),
-            (Success(_), Success(_), Success(_), Failure(e)) => Failure(e),
-            (Success(_), Success(_), Failure(e), Success(_)) => Failure(e),
-            (Success(_), Failure(e), Success(_), Success(_)) => Failure(e),
-            (Failure(e), Success(_), Success(_), Success(_)) => Failure(e),
-            (Success(_), Success(_), Failure(e0), Failure(e1)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Success(_), Failure(e0), Success(_), Failure(e1)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Success(_), Failure(e0), Failure(e1), Success(_)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Failure(e0), Success(_), Success(_), Failure(e1)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Failure(e0), Failure(e1), Success(_), Success(_)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Failure(e0), Success(_), Failure(e1), Success(_)) => {
-                Failure(nonempties(e0, Some(e1).into_iter()))
-            }
-            (Success(_), Failure(e0), Failure(e1), Failure(e2)) => {
-                Failure(nonempties(e0, vec![e1, e2].into_iter()))
-            }
-            (Failure(e0), Success(_), Failure(e1), Failure(e2)) => {
-                Failure(nonempties(e0, vec![e1, e2].into_iter()))
-            }
-            (Failure(e0), Failure(e1), Success(_), Failure(e2)) => {
-                Failure(nonempties(e0, vec![e1, e2].into_iter()))
-            }
-            (Failure(e0), Failure(e1), Failure(e2), Success(_)) => {
-                Failure(nonempties(e0, vec![e1, e2].into_iter()))
-            }
-            (Failure(e0), Failure(e1), Failure(e2), Failure(e3)) => {
-                Failure(nonempties(e0, vec![e1, e2, e3].into_iter()))
+            (Good(t), Good(u), Good(v), Good(w)) => Good(f(t, u, v, w)),
+            (Good(_), Good(_), Good(_), Fail(e)) => Fail(e),
+            (Good(_), Good(_), Fail(e), Good(_)) => Fail(e),
+            (Good(_), Fail(e), Good(_), Good(_)) => Fail(e),
+            (Fail(e), Good(_), Good(_), Good(_)) => Fail(e),
+            (Good(_), Good(_), Fail(e0), Fail(e1)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Good(_), Fail(e0), Good(_), Fail(e1)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Good(_), Fail(e0), Fail(e1), Good(_)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Good(_), Good(_), Fail(e1)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Fail(e1), Good(_), Good(_)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Fail(e0), Good(_), Fail(e1), Good(_)) => Fail(nons(e0, Some(e1).into_iter())),
+            (Good(_), Fail(e0), Fail(e1), Fail(e2)) => Fail(nons(e0, vec![e1, e2].into_iter())),
+            (Fail(e0), Good(_), Fail(e1), Fail(e2)) => Fail(nons(e0, vec![e1, e2].into_iter())),
+            (Fail(e0), Fail(e1), Good(_), Fail(e2)) => Fail(nons(e0, vec![e1, e2].into_iter())),
+            (Fail(e0), Fail(e1), Fail(e2), Good(_)) => Fail(nons(e0, vec![e1, e2].into_iter())),
+            (Fail(e0), Fail(e1), Fail(e2), Fail(e3)) => {
+                Fail(nons(e0, vec![e1, e2, e3].into_iter()))
             }
         }
     }
@@ -369,33 +347,33 @@ impl<T, E> Validated<T, E> {
     /// Converts `self` into a [`Result`].
     pub fn ok(self) -> Result<T, NonEmpty<E>> {
         match self {
-            Success(t) => Ok(t),
-            Failure(e) => Err(e),
+            Good(t) => Ok(t),
+            Fail(e) => Err(e),
         }
     }
 
-    /// Returns the contained [`Success`] value, consuming `self`.
+    /// Returns the contained [`Good`] value, consuming `self`.
     ///
     /// # Examples
     ///
     /// ```
     /// use validated::Validated;
     ///
-    /// let v: Validated<u32, &str> = Validated::Success(1);
+    /// let v: Validated<u32, &str> = Validated::Good(1);
     /// assert_eq!(v.unwrap(), 1);
     /// ```
     ///
     /// # Panics
     ///
-    /// Panics if `self` is actually the `Failure` variant.
+    /// Panics if `self` is actually the `Fail` variant.
     pub fn unwrap(self) -> T {
         match self {
-            Success(t) => t,
-            Failure(_) => panic!("called `Validated::unwrap` on a `Failure` value"),
+            Good(t) => t,
+            Fail(_) => panic!("called `Validated::unwrap` on a `Fail` value"),
         }
     }
 
-    /// Returns the contained [`Success`] value or a provided default.
+    /// Returns the contained [`Good`] value or a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are
     /// passing the result of a function call, it is recommended to use
@@ -406,7 +384,7 @@ impl<T, E> Validated<T, E> {
     /// ```
     /// use validated::Validated;
     ///
-    /// let v: Validated<u32, &str> = Validated::Success(1);
+    /// let v: Validated<u32, &str> = Validated::Good(1);
     /// assert_eq!(v.unwrap_or(2), 1);
     ///
     /// let v: Validated<u32, &str> = Validated::fail("Oh no!");
@@ -414,29 +392,29 @@ impl<T, E> Validated<T, E> {
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Success(t) => t,
-            Failure(_) => default,
+            Good(t) => t,
+            Fail(_) => default,
         }
     }
 
-    /// Returns the contained [`Success`] value or computes it from a closure.
+    /// Returns the contained [`Good`] value or computes it from a closure.
     pub fn unwrap_or_else<F>(self, op: F) -> T
     where
         F: FnOnce(NonEmpty<E>) -> T,
     {
         match self {
-            Success(t) => t,
-            Failure(e) => op(e),
+            Good(t) => t,
+            Fail(e) => op(e),
         }
     }
 }
 
 impl<T: Default, E> Validated<T, E> {
-    /// Returns the contained [`Success`] value or the default for `T`.
+    /// Returns the contained [`Good`] value or the default for `T`.
     pub fn unwrap_or_default(self) -> T {
         match self {
-            Success(t) => t,
-            Failure(_) => Default::default(),
+            Good(t) => t,
+            Fail(_) => Default::default(),
         }
     }
 }
@@ -458,8 +436,8 @@ impl<T: DerefMut, E> Validated<T, E> {
 impl<T, E> From<Result<T, E>> for Validated<T, E> {
     fn from(r: Result<T, E>) -> Self {
         match r {
-            Ok(t) => Success(t),
-            Err(e) => Failure(NonEmpty::new(e)),
+            Ok(t) => Good(t),
+            Err(e) => Fail(NonEmpty::new(e)),
         }
     }
 }
@@ -490,8 +468,8 @@ where
             .collect();
 
         match NonEmpty::from_vec(errors) {
-            None => Success(result),
-            Some(e) => Failure(e),
+            None => Good(result),
+            Some(e) => Fail(e),
         }
     }
 }
@@ -506,8 +484,8 @@ where
         let result = iter
             .into_iter()
             .filter_map(|item| match item {
-                Success(t) => Some(t),
-                Failure(e) => {
+                Good(t) => Some(t),
+                Fail(e) => {
                     errors.extend(e);
                     None
                 }
@@ -515,8 +493,8 @@ where
             .collect();
 
         match NonEmpty::from_vec(errors) {
-            None => Success(result),
-            Some(e) => Failure(e),
+            None => Good(result),
+            Some(e) => Fail(e),
         }
     }
 }
@@ -546,8 +524,8 @@ where
             .collect();
 
         match NonEmpty::from_vec(errors.into_inner().unwrap()) {
-            None => Success(result),
-            Some(e) => Failure(e),
+            None => Good(result),
+            Some(e) => Fail(e),
         }
     }
 }
@@ -568,8 +546,8 @@ where
         let result = par_iter
             .into_par_iter()
             .filter_map(|item| match item {
-                Success(t) => Some(t),
-                Failure(e) => {
+                Good(t) => Some(t),
+                Fail(e) => {
                     errors.lock().unwrap().extend(e);
                     None
                 }
@@ -577,8 +555,8 @@ where
             .collect();
 
         match NonEmpty::from_vec(errors.into_inner().unwrap()) {
-            None => Success(result),
-            Some(e) => Failure(e),
+            None => Good(result),
+            Some(e) => Fail(e),
         }
     }
 }
@@ -612,9 +590,9 @@ impl<'a, T, E> IntoIterator for &'a mut Validated<T, E> {
     }
 }
 
-/// An iterator over a reference to the [`Success`] variant of a [`Validated`].
+/// An iterator over a reference to the [`Good`] variant of a [`Validated`].
 ///
-/// The iterator yields one value if the result is [`Success`], otherwise nothing.
+/// The iterator yields one value if the result is [`Good`], otherwise nothing.
 ///
 /// Created by [`Validated::iter`].
 #[derive(Debug)]
@@ -646,7 +624,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 
 impl<T> ExactSizeIterator for Iter<'_, T> {}
 
-/// An iterator over a mutable reference to the [`Success`] variant of a [`Validated`].
+/// An iterator over a mutable reference to the [`Good`] variant of a [`Validated`].
 ///
 /// Created by [`Validated::iter_mut`].
 #[derive(Debug)]
@@ -678,9 +656,9 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 
 impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
-/// An iterator over the value in a [`Success`] variant of a [`Validated`].
+/// An iterator over the value in a [`Good`] variant of a [`Validated`].
 ///
-/// The iterator yields one value if the result is [`Success`], otherwise nothing.
+/// The iterator yields one value if the result is [`Good`], otherwise nothing.
 ///
 /// This struct is created by the [`into_iter`] method on
 /// [`Validated`] (provided by the [`IntoIterator`] trait).
@@ -707,7 +685,7 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 /// Fuse some `NonEmpty`s together.
-fn nonempties<E, I>(mut a: NonEmpty<E>, rest: I) -> NonEmpty<E>
+fn nons<E, I>(mut a: NonEmpty<E>, rest: I) -> NonEmpty<E>
 where
     I: Iterator<Item = NonEmpty<E>>,
 {

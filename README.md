@@ -62,10 +62,11 @@ end.
 The [`Validated`] type accomodates these use cases; it is a "cumulative `Result`".
 
 ```rust
-use validated::Validated::{self, Success, Failure};
+use validated::Validated::{self, Good, Fail};
+use nonempty::NonEmpty;
 
-let v = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
-let r: Validated<Vec<u32>, &str> = Failure(vec!["No!", "Ack!"]);
+let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
+let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
 assert_eq!(r, v.into_iter().collect());
 ```
 
