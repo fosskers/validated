@@ -94,6 +94,8 @@ use std::sync::Mutex;
 
 /// Similar to [`Result`], but cumulative in its error type.
 ///
+/// # Error weaving
+///
 /// Consider that when using `collect` in a "Traversable" way to pull a single
 /// `Result` out of an `Iterator` containing many `Result`s, it will fail on the
 /// first `Err` and short-circuit the iteration. This is suboptimal if we wish
@@ -126,6 +128,23 @@ use std::sync::Mutex;
 /// let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
+///
+/// # Mapping composite results
+///
+/// This type also provides `mapN` methods, which are surprisingly missing on
+/// `Option` and `Result`.
+///
+/// ```
+/// use validated::Validated::{self, Good, Fail};
+///
+/// let v: Validated<u32, &str> = Good(1).map3(Good(2), Good(3), |a, b, c| a + b + c);
+/// assert_eq!(v, Good(6));
+/// ```
+///
+/// For `Validated` in particular these are quite useful, as a meaningful
+/// `and_then` cannot be written for it.
+///
+/// Formally, `Validated` is not a Monad, but it is an Applicative Functor.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Validated<T, E> {
     /// Analogous to [`Result::Ok`].
