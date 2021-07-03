@@ -61,9 +61,10 @@
 //!
 //! ```
 //! use validated::Validated::{self, Success, Failure};
+//! use nonempty::NonEmpty;
 //!
 //! let v = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
-//! let r: Validated<Vec<u32>, &str> = Failure(vec!["No!", "Ack!"]);
+//! let r: Validated<Vec<u32>, &str> = Failure(NonEmpty::from(("No!", vec!["Ack!"])));
 //! assert_eq!(r, v.into_iter().collect());
 //! ```
 //!
@@ -100,13 +101,14 @@ use std::sync::Mutex;
 ///
 /// ```
 /// use validated::Validated;
+/// use nonempty::NonEmpty;
 ///
 /// let v = vec![Ok(1), Ok(2), Ok(3)];
 /// let r: Validated<Vec<u32>, &str> = Validated::Success(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
 /// let v = vec![Ok(1), Err("Oh!"), Ok(2), Err("No!"), Ok(3)];
-/// let r: Validated<Vec<u32>, &str> = Validated::Failure(vec!["Oh!", "No!"]);
+/// let r: Validated<Vec<u32>, &str> = Validated::Failure(NonEmpty::from(("Oh!", vec!["No!"])));
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 ///
@@ -114,13 +116,14 @@ use std::sync::Mutex;
 ///
 /// ```
 /// use validated::Validated::{self, Success, Failure};
+/// use nonempty::NonEmpty;
 ///
 /// let v = vec![Success(1), Success(2), Success(3)];
 /// let r: Validated<Vec<u32>, &str> = Success(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
 /// let v = vec![Success(1), Validated::fail("No!"), Success(3), Validated::fail("Ack!")];
-/// let r: Validated<Vec<u32>, &str> = Failure(vec!["No!", "Ack!"]);
+/// let r: Validated<Vec<u32>, &str> = Failure(NonEmpty::from(("No!", vec!["Ack!"])));
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -253,6 +256,16 @@ impl<T, E> Validated<T, E> {
 
     /// Maps a function over two `Validated`, but only if both are of the
     /// `Success` variant. If both failed, then their errors are concatenated.
+    ///
+    /// ```
+    /// use validated::Validated::{self, Success, Failure};
+    ///
+    /// let v: Validated<bool, &str> = Success(1).map2(Success(1), |a, b| a == b);
+    /// assert_eq!(v, Success(true));
+    ///
+    /// let v: Validated<bool, &str> = Success(1).map2(Validated::fail("No!"), |a, b| a == b);
+    /// assert_eq!(v, Validated::fail("No!"));
+    /// ```
     pub fn map2<U, Z, F>(self, vu: Validated<U, E>, f: F) -> Validated<Z, E>
     where
         F: FnOnce(T, U) -> Z,
@@ -269,6 +282,8 @@ impl<T, E> Validated<T, E> {
         }
     }
 
+    /// Maps a function over three `Validated`, but only if all three are of the
+    /// `Success` variant. If any failed, then their errors are concatenated.
     pub fn map3<U, V, Z, F>(self, vu: Validated<U, E>, vv: Validated<V, E>, f: F) -> Validated<Z, E>
     where
         F: FnOnce(T, U, V) -> Z,
@@ -386,11 +401,11 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
 }
 
 // FIXME Can't do it...
-impl<T, E> FromIterator<NonEmpty<E>> for Validated<T, E> {
-    fn from_iter<I: IntoIterator<Item = NonEmpty<E>>>(iter: I) -> Self {
-        todo!()
-    }
-}
+// impl<T, E> FromIterator<NonEmpty<E>> for Validated<T, E> {
+//     fn from_iter<I: IntoIterator<Item = NonEmpty<E>>>(iter: I) -> Self {
+//         todo!()
+//     }
+// }
 
 impl<T, U, E> FromIterator<Result<T, E>> for Validated<U, E>
 where
