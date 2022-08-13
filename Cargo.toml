@@ -1,8 +1,8 @@
 [package]
 name = "validated"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Colin Woodbury <colin@fosskers.ca>", "John Archer <archer884@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "The cumulative sibling of `Result` and `Either`."
 homepage = "https://github.com/fosskers/validated"
 repository = "https://github.com/fosskers/validated"
@@ -12,7 +12,7 @@ keywords = ["validation", "errors"]
 categories = ["data-structures", "rust-patterns"]
 
 [dependencies]
-nonempty = "0.7"
+nonempty = "0.8"
 rayon = { version = "1.5", optional = true }
 
 [dev-dependencies]
