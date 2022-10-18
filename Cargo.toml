@@ -1,6 +1,6 @@
 [package]
 name = "validated"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Colin Woodbury <colin@fosskers.ca>", "John Archer <archer884@gmail.com>"]
 edition = "2021"
 description = "The cumulative sibling of `Result` and `Either`."
