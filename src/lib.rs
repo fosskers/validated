@@ -95,7 +95,7 @@
 
 use crate::Validated::{Fail, Good};
 use nonempty::NonEmpty;
-use std::iter::FromIterator;
+use std::iter::{FromIterator, Sum};
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "rayon")]
@@ -617,6 +617,66 @@ impl<'a, T, E> IntoIterator for &'a mut Validated<T, E> {
 
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
+    }
+}
+
+impl<T, U, E> Sum<Validated<U, E>> for Validated<T, E>
+where
+    T: Sum<U>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Validated<U, E>>,
+    {
+        let mut errors = Vec::new();
+
+        let result = iter
+            .filter_map(|item| match item {
+                Good(n) => Some(n),
+                Fail(e) => {
+                    errors.extend(e);
+                    None
+                }
+            })
+            .sum();
+
+        match NonEmpty::from_vec(errors) {
+            None => Good(result),
+            Some(e) => Fail(e),
+        }
+    }
+}
+
+/// ```
+/// use validated::Validated;
+///
+/// let ns: Validated<u32, ()> = [Ok(1), Ok(2), Ok(3)].into_iter().sum();
+/// assert_eq!(Validated::Good(6), ns);
+/// ```
+impl<T, U, E> Sum<Result<U, E>> for Validated<T, E>
+where
+    T: Sum<U>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Result<U, E>>,
+    {
+        let mut errors = Vec::new();
+
+        let result = iter
+            .filter_map(|item| match item {
+                Ok(n) => Some(n),
+                Err(e) => {
+                    errors.push(e);
+                    None
+                }
+            })
+            .sum();
+
+        match NonEmpty::from_vec(errors) {
+            None => Good(result),
+            Some(e) => Fail(e),
+        }
     }
 }
 
