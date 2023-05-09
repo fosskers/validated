@@ -61,17 +61,17 @@
 //!
 //! ```
 //! use validated::Validated::{self, Good, Fail};
-//! use nonempty::NonEmpty;
+//! use nonempty_collections::*;
 //!
 //! let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
-//! let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
+//! let r: Validated<Vec<u32>, &str> = Fail(nev!["No!", "Ack!"]);
 //! assert_eq!(r, v.into_iter().collect());
 //! ```
 //!
-//! ## Use of `NonEmpty`
+//! ## Use of non-empty Vectors (`NEVec`)
 //!
 //! In the spirit of "make illegal states unrepresentable", the [`Fail`] variant
-//! of `Validated` contains a [`NonEmpty`], a non-empty `Vec`. `NonEmpty` can do
+//! of `Validated` contains a [`NEVec`], a non-empty `Vec`. `NEVec` can do
 //! everything that `Vec` can do, plus some additional benefits. In the case of
 //! this crate, this representation forbids the otherwise meaningless `Fail(vec![])`.
 //!
@@ -94,10 +94,10 @@
 #![doc(html_root_url = "https://docs.rs/validated/0.3.0")]
 
 use crate::Validated::{Fail, Good};
-use nonempty::NonEmpty;
 use std::iter::{FromIterator, Sum};
 use std::ops::{Deref, DerefMut};
 
+use nonempty_collections::{nev, NEVec};
 #[cfg(feature = "rayon")]
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 #[cfg(feature = "rayon")]
@@ -114,14 +114,14 @@ use std::sync::Mutex;
 ///
 /// ```
 /// use validated::Validated::{self, Good, Fail};
-/// use nonempty::NonEmpty;
+/// use nonempty_collections::*;
 ///
 /// let v = vec![Ok(1), Ok(2), Ok(3)];
 /// let r: Validated<Vec<u32>, &str> = Good(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
 /// let v = vec![Ok(1), Err("Oh!"), Ok(2), Err("No!"), Ok(3)];
-/// let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("Oh!", vec!["No!"])));
+/// let r: Validated<Vec<u32>, &str> = Fail(nev!["Oh!", "No!"]);
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 ///
@@ -129,14 +129,14 @@ use std::sync::Mutex;
 ///
 /// ```
 /// use validated::Validated::{self, Good, Fail};
-/// use nonempty::NonEmpty;
+/// use nonempty_collections::*;
 ///
 /// let v = vec![Good(1), Good(2), Good(3)];
 /// let r: Validated<Vec<u32>, &str> = Good(vec![1, 2, 3]);
 /// assert_eq!(r, v.into_iter().collect());
 ///
 /// let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
-/// let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
+/// let r: Validated<Vec<u32>, &str> = Fail(nev!["No!", "Ack!"]);
 /// assert_eq!(r, v.into_iter().collect());
 /// ```
 ///
@@ -161,13 +161,13 @@ pub enum Validated<T, E> {
     /// Analogous to [`Result::Ok`].
     Good(T),
     /// Analogous to [`Result::Err`], except that the error type is cumulative.
-    Fail(NonEmpty<E>),
+    Fail(NEVec<E>),
 }
 
 impl<T, E> Validated<T, E> {
     /// Fail with the given error.
     pub fn fail(e: E) -> Validated<T, E> {
-        Fail(NonEmpty::new(e))
+        Fail(nev![e])
     }
 
     /// Converts from `&mut Validated<T, E>` to `Validated<&mut T, &mut E>`.
@@ -180,7 +180,7 @@ impl<T, E> Validated<T, E> {
             Fail(ref mut e) => {
                 let head = &mut e.head;
                 let tail = e.tail.iter_mut().collect();
-                let ne = NonEmpty { head, tail };
+                let ne = NEVec { head, tail };
                 Fail(ne)
             }
         }
@@ -199,7 +199,7 @@ impl<T, E> Validated<T, E> {
             Fail(e) => {
                 let head = &e.head;
                 let tail = e.tail.iter().collect();
-                let ne = NonEmpty { head, tail };
+                let ne = NEVec { head, tail };
                 Fail(ne)
             }
         }
@@ -276,7 +276,7 @@ impl<T, E> Validated<T, E> {
     /// [`Good`] variant untouched.
     pub fn map_err<R, F>(self, op: F) -> Validated<T, R>
     where
-        F: FnOnce(NonEmpty<E>) -> NonEmpty<R>,
+        F: FnOnce(NEVec<E>) -> NEVec<R>,
     {
         match self {
             Good(t) => Good(t),
@@ -375,7 +375,7 @@ impl<T, E> Validated<T, E> {
     }
 
     /// Converts `self` into a [`Result`].
-    pub fn ok(self) -> Result<T, NonEmpty<E>> {
+    pub fn ok(self) -> Result<T, NEVec<E>> {
         match self {
             Good(t) => Ok(t),
             Fail(e) => Err(e),
@@ -430,7 +430,7 @@ impl<T, E> Validated<T, E> {
     /// Returns the contained [`Good`] value or computes it from a closure.
     pub fn unwrap_or_else<F>(self, op: F) -> T
     where
-        F: FnOnce(NonEmpty<E>) -> T,
+        F: FnOnce(NEVec<E>) -> T,
     {
         match self {
             Good(t) => t,
@@ -467,7 +467,7 @@ impl<T, E> From<Result<T, E>> for Validated<T, E> {
     fn from(r: Result<T, E>) -> Self {
         match r {
             Ok(t) => Good(t),
-            Err(e) => Fail(NonEmpty::new(e)),
+            Err(e) => Fail(NEVec::new(e)),
         }
     }
 }
@@ -497,7 +497,7 @@ where
             })
             .collect();
 
-        match NonEmpty::from_vec(errors) {
+        match NEVec::from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -522,7 +522,7 @@ where
             })
             .collect();
 
-        match NonEmpty::from_vec(errors) {
+        match NEVec::from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -553,7 +553,7 @@ where
             })
             .collect();
 
-        match NonEmpty::from_vec(errors.into_inner().unwrap()) {
+        match NEVec::from_vec(errors.into_inner().unwrap()) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -584,7 +584,7 @@ where
             })
             .collect();
 
-        match NonEmpty::from_vec(errors.into_inner().unwrap()) {
+        match NEVec::from_vec(errors.into_inner().unwrap()) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -640,7 +640,7 @@ where
             })
             .sum();
 
-        match NonEmpty::from_vec(errors) {
+        match NEVec::from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -673,7 +673,7 @@ where
             })
             .sum();
 
-        match NonEmpty::from_vec(errors) {
+        match NEVec::from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -774,10 +774,10 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-/// Fuse some `NonEmpty`s together.
-fn nons<E, I>(mut a: NonEmpty<E>, rest: I) -> NonEmpty<E>
+/// Fuse some `NEVec`s together.
+fn nons<E, I>(mut a: NEVec<E>, rest: I) -> NEVec<E>
 where
-    I: Iterator<Item = NonEmpty<E>>,
+    I: Iterator<Item = NEVec<E>>,
 {
     for mut i in rest {
         a.push(i.head);
