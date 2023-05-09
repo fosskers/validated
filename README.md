@@ -1,5 +1,7 @@
 # validated
 
+<!-- cargo-rdme start -->
+
 The cumulative sibling of `Result` and `Either`.
 
 The `Validated` type has special `FromIterator` instances that enable
@@ -63,17 +65,17 @@ The `Validated` type accomodates these use cases; it is a "cumulative `Result`".
 
 ```rust
 use validated::Validated::{self, Good, Fail};
-use nonempty::NonEmpty;
+use nonempty_collections::*;
 
 let v = vec![Good(1), Validated::fail("No!"), Good(3), Validated::fail("Ack!")];
-let r: Validated<Vec<u32>, &str> = Fail(NonEmpty::from(("No!", vec!["Ack!"])));
+let r: Validated<Vec<u32>, &str> = Fail(nev!["No!", "Ack!"]);
 assert_eq!(r, v.into_iter().collect());
 ```
 
-### Use of `NonEmpty`
+### Use of non-empty Vectors (`NEVec`)
 
 In the spirit of "make illegal states unrepresentable", the `Fail` variant
-of `Validated` contains a `NonEmpty`, a non-empty `Vec`. `NonEmpty` can do
+of `Validated` contains a `NEVec`, a non-empty `Vec`. `NEVec` can do
 everything that `Vec` can do, plus some additional benefits. In the case of
 this crate, this representation forbids the otherwise meaningless `Fail(vec![])`.
 
@@ -92,4 +94,5 @@ In other words, if you have a `Validated<T, E>`, you either have a concrete
 [haskell]: https://hackage.haskell.org/package/validation
 [cats]: https://typelevel.org/cats/datatypes/validated.html
 
-License: MIT
+<!-- cargo-rdme end -->
+
