@@ -1,5 +1,11 @@
 # `validated` Changelog
 
+### 0.4.0 (2023-05-09)
+
+#### Changed
+
+- Swap the underlying non-empty vector type to `NEVec` from `nonempty-collections`.
+
 ### 0.3.0 (2022-10-18)
 
 #### Added
