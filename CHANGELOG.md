@@ -1,5 +1,11 @@
 # `validated` Changelog
 
+### 0.4.1 (2024-04-09)
+
+#### Changed
+
+- Bumped dependencies.
+
 ### 0.4.0 (2023-05-09)
 
 #### Changed
