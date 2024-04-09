@@ -91,7 +91,7 @@
 //! [cats]: https://typelevel.org/cats/datatypes/validated.html
 
 #![warn(missing_docs)]
-#![doc(html_root_url = "https://docs.rs/validated/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/validated/0.4.1")]
 
 use crate::Validated::{Fail, Good};
 use std::iter::{FromIterator, Sum};

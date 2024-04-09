@@ -1,6 +1,6 @@
 [package]
 name = "validated"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Colin Woodbury <colin@fosskers.ca>", "John Archer <archer884@gmail.com>"]
 edition = "2021"
 description = "The cumulative sibling of `Result` and `Either`."
@@ -12,8 +12,8 @@ keywords = ["validation", "errors"]
 categories = ["data-structures", "rust-patterns"]
 
 [dependencies]
-nonempty-collections = "0.1.1"
-rayon = { version = "1.7", optional = true }
+nonempty-collections = "0.2.5"
+rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
 version-sync = "0.9"
