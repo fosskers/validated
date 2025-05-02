@@ -548,7 +548,7 @@ where
             })
             .collect();
 
-        match NEVec::from_vec(errors.into_inner().unwrap()) {
+        match NEVec::try_from_vec(errors.into_inner().unwrap()) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -579,7 +579,7 @@ where
             })
             .collect();
 
-        match NEVec::from_vec(errors.into_inner().unwrap()) {
+        match NEVec::try_from_vec(errors.into_inner().unwrap()) {
             None => Good(result),
             Some(e) => Fail(e),
         }
