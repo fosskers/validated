@@ -1,5 +1,12 @@
 # `validated` Changelog
 
+### 0.5.0 (2025-05-02)
+
+#### Changed
+
+- Bump `nonempty-collections` to `0.3`, which had many breaking changes itself,
+  so we bump here too.
+
 ### 0.4.1 (2024-04-09)
 
 #### Changed
