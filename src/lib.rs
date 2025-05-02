@@ -97,7 +97,7 @@ use crate::Validated::{Fail, Good};
 use std::iter::{FromIterator, Sum};
 use std::ops::{Deref, DerefMut};
 
-use nonempty_collections::{nev, NEVec};
+use nonempty_collections::{nev, NEVec, NonEmptyIterator};
 #[cfg(feature = "rayon")]
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 #[cfg(feature = "rayon")]
@@ -178,9 +178,7 @@ impl<T, E> Validated<T, E> {
         match self {
             Good(ref mut t) => Good(t),
             Fail(ref mut e) => {
-                let head = &mut e.head;
-                let tail = e.tail.iter_mut().collect();
-                let ne = NEVec { head, tail };
+                let ne = e.nonempty_iter_mut().collect();
                 Fail(ne)
             }
         }
@@ -197,9 +195,7 @@ impl<T, E> Validated<T, E> {
         match self {
             Good(ref t) => Good(t),
             Fail(e) => {
-                let head = &e.head;
-                let tail = e.tail.iter().collect();
-                let ne = NEVec { head, tail };
+                let ne = e.nonempty_iter().collect();
                 Fail(ne)
             }
         }
@@ -304,9 +300,8 @@ impl<T, E> Validated<T, E> {
             (Good(t), Good(u)) => Good(f(t, u)),
             (Good(_), Fail(e)) => Fail(e),
             (Fail(e), Good(_)) => Fail(e),
-            (Fail(mut e0), Fail(mut e1)) => {
-                e0.push(e1.head);
-                e0.append(&mut e1.tail);
+            (Fail(mut e0), Fail(e1)) => {
+                e0.extend(e1);
                 Fail(e0)
             }
         }
@@ -497,7 +492,7 @@ where
             })
             .collect();
 
-        match NEVec::from_vec(errors) {
+        match NEVec::try_from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -522,7 +517,7 @@ where
             })
             .collect();
 
-        match NEVec::from_vec(errors) {
+        match NEVec::try_from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -640,7 +635,7 @@ where
             })
             .sum();
 
-        match NEVec::from_vec(errors) {
+        match NEVec::try_from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -673,7 +668,7 @@ where
             })
             .sum();
 
-        match NEVec::from_vec(errors) {
+        match NEVec::try_from_vec(errors) {
             None => Good(result),
             Some(e) => Fail(e),
         }
@@ -705,7 +700,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+impl<T> DoubleEndedIterator for Iter<'_, T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.take()
@@ -737,7 +732,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
+impl<T> DoubleEndedIterator for IterMut<'_, T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.take()
@@ -779,9 +774,8 @@ fn nons<E, I>(mut a: NEVec<E>, rest: I) -> NEVec<E>
 where
     I: Iterator<Item = NEVec<E>>,
 {
-    for mut i in rest {
-        a.push(i.head);
-        a.append(&mut i.tail)
+    for i in rest {
+        a.extend(i);
     }
 
     a

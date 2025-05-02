@@ -12,8 +12,5 @@ keywords = ["validation", "errors"]
 categories = ["data-structures", "rust-patterns"]
 
 [dependencies]
-nonempty-collections = "0.2.5"
+nonempty-collections = "0.3.0"
 rayon = { version = "1.10", optional = true }
-
-[dev-dependencies]
-version-sync = "0.9"
