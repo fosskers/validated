@@ -1,5 +1,14 @@
 # `validated` Changelog
 
+### 1.0.0 (2025-06-30)
+
+This has been stable for years, it's time.
+
+#### Changed
+
+- Bumped `nonempty-collections` to `1.0`.
+- Bumped the Rust Edition to 2024.
+
 ### 0.5.0 (2025-05-02)
 
 #### Changed

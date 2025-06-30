@@ -176,8 +176,8 @@ impl<T, E> Validated<T, E> {
     /// allocated.
     pub fn as_mut(&mut self) -> Validated<&mut T, &mut E> {
         match self {
-            Good(ref mut t) => Good(t),
-            Fail(ref mut e) => {
+            Good(t) => Good(t),
+            Fail(e) => {
                 let ne = e.nonempty_iter_mut().collect();
                 Fail(ne)
             }
@@ -193,7 +193,7 @@ impl<T, E> Validated<T, E> {
     /// allocated.
     pub fn as_ref(&self) -> Validated<&T, &E> {
         match self {
-            Good(ref t) => Good(t),
+            Good(t) => Good(t),
             Fail(e) => {
                 let ne = e.nonempty_iter().collect();
                 Fail(ne)
